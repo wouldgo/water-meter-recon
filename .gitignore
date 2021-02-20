@@ -1,0 +1,6 @@
+.vscode/
+model/variables/
+model/class-labels.txt
+node_modules/
+py/.venv/
+

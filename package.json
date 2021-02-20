@@ -1,0 +1,28 @@
+{
+  "name": "meter-recon",
+  "version": "0.0.0",
+  "scripts": {
+    "prepare-images": "node train.js",
+    "predict": "node predict.js",
+    "train": "./py/train.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wouldgo/meter-recon.git"
+  },
+  "author": "Dario Andrei <wouldg84@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wouldgo/meter-recon/issues"
+  },
+  "homepage": "https://github.com/wouldgo/meter-recon#readme",
+  "dependencies": {
+    "@tensorflow/tfjs-node": "2.8.3",
+    "opencv4nodejs": "wouldgo/opencv4nodejs#gcc-indentation",
+    "pino": "6.9.0"
+  },
+  "devDependencies": {
+    "eslint": "7.17.0",
+    "husky": "4.3.7"
+  }
+}
