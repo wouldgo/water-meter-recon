@@ -3,6 +3,7 @@
 const {
       LOG_FILE = '/home/dario/tmp/predictions.csv',
       ROOT_FOLDER = '/home/dario/Pictures/water-meter',
+      DISPOSE_FOLDER = '/home/dario/Pictures/water-meter-disposed',
       MODEL_FOLDER = `${__dirname}/model`,
       LABELS = [
         0,
@@ -17,17 +18,18 @@ const {
         9
       ].join('|'),
       FROM_DATE = '2000-01-01T00:00:00.000Z',
-      TO_DATE = '2999-01-01T00:00:00.000Z',
+      HOW_MANY_FILES = 1000,
       ACCURACY_FACTOR = '1.4'
     } = process.env
   , {EOL} = require('os')
-  , {unlink, readdir, appendFile} = require('fs/promises')
+  , {unlink, readdir, appendFile, rename} = require('fs/promises')
+  , {parse} = require('path')
   , cv = require('opencv4nodejs')
   , tf = require('@tensorflow/tfjs-node')
   , pino = require('pino')()
   , image = require('./src/images')(cv)
   , fromDate = new Date(FROM_DATE)
-  , toDate = new Date(TO_DATE)
+  , howManyFiles = Number(HOW_MANY_FILES)
   , labels = LABELS.split('|')
   , accuracyFactor = Number(ACCURACY_FACTOR)
   , timeStampMatcher = /.+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z).+/g
@@ -68,6 +70,11 @@ const {
       const valueToReturn = [...predictions.slice(0, 5), '.', ...predictions.slice(5)].join('');
 
       return Number(valueToReturn);
+    }
+  , disposeFile = async aFile => {
+      const {base} = parse(aFile);
+
+      await rename(aFile, `${DISPOSE_FOLDER}/${base}`);
     };
 
 (async() => {
@@ -85,19 +92,15 @@ const {
     });
   }
 
-  try {
-    for (const aFile of files) {
-      const timestamp = aFile.split(timeStampMatcher)
-          .find(elm => Boolean(elm))
-        , thatTime = new Date(timestamp);
+  for (let index = 0; index < files.length; index += 1) {
+    const aFile = files[index]
+      , howManyFilesByFar = index + 1
+      , timestamp = aFile.split(timeStampMatcher)
+        .find(elm => Boolean(elm))
+      , thatTime = new Date(timestamp);
 
+    if (howManyFilesByFar < howManyFiles) {
       if (thatTime >= fromDate) {
-
-        if (toDate <= thatTime) {
-
-          pino.info(`Batch round ends: date is ${thatTime}`);
-          break;
-        }
 
         try {
           const aPrediction = await predict(aFile);
@@ -108,21 +111,22 @@ const {
             thatTime,
             'prediction': aPrediction
           });
-        } catch (err) {
-          const {'message': errorMessage} = err;
 
-          pino.warn({
-            thatTime,
-            'message': errorMessage
-          });
+          pino.info(`${aFile} disposing`);
+          await disposeFile(aFile);
+          pino.info(`${aFile} disposed`);
+        } catch (err) {
+
+          pino.warn(err, thatTime);
         }
       } else {
 
         pino.info({thatTime, 'referenceDate': fromDate});
       }
-    }
-  } catch ({message}) {
+    } else {
 
-    pino.error({message});
+      pino.info({howManyFilesByFar, howManyFiles}, 'batch number reached');
+      break;
+    }
   }
 })();
