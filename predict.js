@@ -22,7 +22,7 @@ const {
       ACCURACY_FACTOR = '1.4'
     } = process.env
   , {EOL} = require('os')
-  , {unlink, readdir, appendFile, rename} = require('fs/promises')
+  , {readdir, appendFile, rename} = require('fs/promises')
   , {parse} = require('path')
   , cv = require('opencv4nodejs')
   , tf = require('@tensorflow/tfjs-node')
@@ -81,16 +81,6 @@ const {
   const model = await tf.node.loadSavedModel(MODEL_FOLDER)
     , files = (await readdir(ROOT_FOLDER)).map(elm => `${ROOT_FOLDER}/${elm}`)
     , predict = predictFactory(model);
-
-  try {
-
-    await unlink(LOG_FILE);
-  } catch (err) {
-
-    pino.info({
-      'message': `No file to deleted: ${LOG_FILE}`
-    });
-  }
 
   for (let index = 0; index < files.length; index += 1) {
     const aFile = files[index]
