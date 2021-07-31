@@ -21,14 +21,10 @@ const {
       ACCURACY_FACTOR = '1.4'
     } = process.env
   , {EOL} = require('os')
-  , pino = require('pino')()
-  , tf = require('@tensorflow/tfjs-node')
-  , fs = require('fs')
-  , {promisify} = require('util')
-  , unlink = promisify(fs.unlink)
-  , readdir = promisify(fs.readdir)
-  , appendFile = promisify(fs.appendFile)
+  , {unlink, readdir, appendFile} = require('fs/promises')
   , cv = require('opencv4nodejs')
+  , tf = require('@tensorflow/tfjs-node')
+  , pino = require('pino')()
   , image = require('./src/images')(cv)
   , fromDate = new Date(FROM_DATE)
   , toDate = new Date(TO_DATE)

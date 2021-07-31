@@ -15,13 +15,9 @@ const {
     FROM_DATE = '2000-01-01T00:00:00.000Z',
     TO_DATE = '2999-01-01T00:00:00.000Z'
   } = process.env
-  , pino = require('pino')()
-  , {promisify} = require('util')
-  , fs = require('fs')
-  , readdir = promisify(fs.readdir)
-  , rmdir = promisify(fs.rmdir)
-  , mkdir = promisify(fs.mkdir)
+  , {readdir, rmdir, mkdir} = require('fs/promises')
   , cv = require('opencv4nodejs')
+  , pino = require('pino')()
   , image = require('./src/images')(cv)
   , fromDate = new Date(FROM_DATE)
   , toDate = new Date(TO_DATE)
