@@ -4,7 +4,7 @@ const {
     LOG_LEVEL = 'info',
 
     FROM_DATE = '2000-01-01T00:00:00.000Z',
-    HOW_MANY_FILES = '1000',
+    HOW_MANY_FILES = '100',
 
     TRAINING_SOURCE_IMAGES_FOLDER = '/home/dario/Pictures/water-meter',
     TRAINING_TO_MODEL_FOLDER = '/home/dario/Pictures/training-data',
