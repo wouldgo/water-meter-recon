@@ -1,6 +1,10 @@
 .vscode/
 model/variables/
 model/class-labels.txt
+model/counter-dump.csv
 node_modules/
 py/.venv/
-
+/.blackbox/pubring.gpg~
+/.blackbox/pubring.kbx~
+/.blackbox/secring.gpg
+/LOCAL_ENV.env
