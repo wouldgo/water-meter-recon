@@ -1,82 +1,100 @@
 'use strict';
+// eslint-disable-next-line import/no-unassigned-import
+require('make-promises-safe');
 
-/*
- ./.venv/bin/make_image_classifier \
-  --image_dir model \
-  --tfhub_module https://tfhub.dev/google/imagenet/inception_v3/feature_vector/4 \
-  --saved_model_dir new-model \
-  --labels_output_file class-labels.txt \
-  --image_size=100
-*/
-const {
-    IMAGE_FOLDER = '/home/dario/Pictures/water-meter/',
-    TMP_FOLDER = '/home/dario/tmp/predictions',
-    IMAGES_TO_SPLIT = '5',
-    FROM_DATE = '2000-01-01T00:00:00.000Z',
-    TO_DATE = '2999-01-01T00:00:00.000Z'
-  } = process.env
-  , {readdir, rmdir, mkdir} = require('fs/promises')
+const {readdir, mkdir, rename} = require('fs/promises')
+  , {parse} = require('path')
   , cv = require('opencv4nodejs')
-  , pino = require('pino')()
+  , pino = require('pino')
+  , tools = require('./_conf')
+  , {
+      fromDate,
+      howManyFiles,
+      training
+    } = tools
+  , {
+      sourceImagesFolder,
+      toModelFolder,
+      imagesToSplit,
+      disposeFolder
+    } = training
+  , log = pino({
+      'level': tools.log.level
+    })
   , image = require('./src/images')(cv)
-  , fromDate = new Date(FROM_DATE)
-  , toDate = new Date(TO_DATE)
   , timeStampMatcher = /.+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z).+/g
-  , imagesToSplit = Number(IMAGES_TO_SPLIT)
   , split = async(anImage, timestamp) => {
-    const cropped = image(anImage);
-    let index = 0;
+      const cropped = image(anImage);
+      let index = 0;
 
-    for (const aRegion of cropped) {
+      for (const aRegion of cropped) {
 
-      //cv.imwrite(`${TMP_FOLDER}/${index}-${timestamp}.png`, aRegion.cvtColor(cv.COLOR_GRAY2BGR));
-      cv.imwrite(`${TMP_FOLDER}/${index}/${timestamp}-${index}.png`, aRegion);
-      index += 1;
+        //cv.imwrite(`${tmpFolder}/${index}-${timestamp}.png`, aRegion.cvtColor(cv.COLOR_GRAY2BGR));
+        cv.imwrite(`${toModelFolder}/${index}/${timestamp}-${index}.png`, aRegion);
+        index += 1;
+      }
+
+      if (index !== imagesToSplit) {
+
+        throw new Error(`There are not ${imagesToSplit} tiles into ${anImage}`);
+      }
+
+      return index;
     }
+  , disposeFile = async aFile => {
+      const {base} = parse(aFile);
 
-    if (index !== imagesToSplit) {
+      await rename(aFile, `${disposeFolder}/${base}`);
+    };
 
-      throw new Error(`There are not ${imagesToSplit} tiles into ${anImage}`);
-    }
-
-    return index;
-  };
-
-(async() => {
-  await rmdir(`${TMP_FOLDER}`, {
+(async function entryPoint() {
+  await mkdir(disposeFolder, {
     'recursive': true
   });
-  await mkdir(`${TMP_FOLDER}`);
+  await mkdir(toModelFolder, {
+    'recursive': true
+  });
+
   for (let index = imagesToSplit - 1; index >= 0; index -= 1) {
 
-    await mkdir(`${TMP_FOLDER}/${index}`);
+    await mkdir(`${toModelFolder}/${index}`, {
+      'recursive': true
+    });
   }
 
-  const filenames = await readdir(IMAGE_FOLDER)
-    , files = filenames.map(elm => `${IMAGE_FOLDER}${elm}`);
+  const filenames = await readdir(sourceImagesFolder)
+    , files = filenames.map(elm => `${sourceImagesFolder}/${elm}`);
 
-  try {
-    for (const aFile of files) {
-      const timestamp = aFile.split(timeStampMatcher).find(elm => Boolean(elm))
-        , thatTime = new Date(timestamp);
+  let howManyFilesByFar = 1;
 
-      if (thatTime >= fromDate) {
+  for (const aFile of files) {
+    const timestamp = aFile.split(timeStampMatcher)
+          .find(elm => Boolean(elm))
+      , thatTime = new Date(timestamp);
 
-        if (toDate <= thatTime) {
+    if (fromDate <= thatTime) {
+      if (howManyFilesByFar <= howManyFiles) {
 
-          pino.info(`Batch round ends: date is ${thatTime}`);
-          break;
+        try {
+
+          await split(aFile, timestamp);
+          log.info({howManyFilesByFar, thatTime});
+
+          await disposeFile(aFile);
+          log.debug(`${howManyFilesByFar} - ${aFile} disposed`);
+        } catch (err) {
+
+          log.warn({err, thatTime, aFile});
         }
-
-        await split(aFile, timestamp);
-        pino.info({thatTime});
+        howManyFilesByFar += 1;
       } else {
 
-        pino.info({thatTime, 'referenceDate': fromDate});
+        log.info({howManyFilesByFar, howManyFiles}, 'batch number reached');
+        break;
       }
-    }
-  } catch (err) {
+    } else {
 
-    throw err;
+      log.debug(`${thatTime} skipped`);
+    }
   }
-})();
+}());

@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "scripts": {
     "prepare-images": "node prepare-images.js",
-    "predict": "node predict.js",
+    "predict": "env $(cat ${ENV:-/dev/null} | xargs) node predict.js",
+    "debug-predict": "env $(cat ${ENV:-/dev/null} | xargs) node --inspect-brk predict.js",
     "train": "./py/train.sh",
     "lint": "eslint ."
   },
@@ -21,8 +22,10 @@
   },
   "homepage": "https://github.com/wouldgo/meter-recon#readme",
   "dependencies": {
+    "@influxdata/influxdb-client": "1.15.0",
     "@tensorflow/tfjs-node": "3.8.0",
     "opencv4nodejs": "wouldgo/opencv4nodejs#gcc-indentation",
+    "make-promises-safe": "5.1.0",
     "pino": "6.13.0"
   },
   "devDependencies": {

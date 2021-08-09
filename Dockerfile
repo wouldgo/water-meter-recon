@@ -12,12 +12,13 @@ COPY . .
 RUN find . -maxdepth 1 ! \
   \( \
     -name "model" -o \
+    -name "_conf.js" -o \
     -name "src" -o \
     -name "_conf.js" -o \
-    -name "predict.js" -o \
-    -name "prepare-images.js" -o \
     -name "package.json" -o \
-    -name "package-lock.json" \
+    -name "package-lock.json" -o \
+    -name "predict.js" -o \
+    -name "prepare-images.js" \
   \) \
   -exec rm -Rf {} + || true
 RUN npm ci

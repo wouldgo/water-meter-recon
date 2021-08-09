@@ -1,44 +1,40 @@
 'use strict';
+// eslint-disable-next-line import/no-unassigned-import
+require('make-promises-safe');
 
-const {
-      LOG_FILE = '/home/dario/tmp/predictions.csv',
-      ROOT_FOLDER = '/home/dario/Pictures/water-meter',
-      DISPOSE_FOLDER = '/home/dario/Pictures/water-meter-disposed',
-      MODEL_FOLDER = `${__dirname}/model`,
-      LABELS = [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9
-      ].join('|'),
-      FROM_DATE = '2000-01-01T00:00:00.000Z',
-      HOW_MANY_FILES = 1000,
-      ACCURACY_FACTOR = '1.4'
-    } = process.env
-  , {EOL} = require('os')
-  , {readdir, appendFile, rename} = require('fs/promises')
+const {readdir, mkdir, rename} = require('fs/promises')
   , {parse} = require('path')
   , cv = require('opencv4nodejs')
   , tf = require('@tensorflow/tfjs-node')
-  , pino = require('pino')()
+  , pino = require('pino')
+  , tools = require('./_conf')
+  , {
+      fromDate,
+      howManyFiles,
+      prediction,
+      influxDb
+    } = tools
+  , {
+      sourceImagesFolder,
+      modelFolder,
+      disposeFolder,
+      labels,
+      accuracyFactor
+    } = prediction
+  , log = pino({
+      'level': tools.log.level
+    })
   , image = require('./src/images')(cv)
-  , fromDate = new Date(FROM_DATE)
-  , howManyFiles = Number(HOW_MANY_FILES)
-  , labels = LABELS.split('|')
-  , accuracyFactor = Number(ACCURACY_FACTOR)
+  , modelModule = require('./src/model')
+  , {close, writeWaterMeterCounterData} = modelModule({log, influxDb, modelFolder})
   , timeStampMatcher = /.+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z).+/g
   , predictFactory = model => async anImage => {
       const cropped = image(anImage)
         , predictions = [];
 
-      for (const aRegion of cropped) {
-        const newMat = new cv.Mat(
+      for (let index = 0; index < cropped.length; index += 1) {
+        const aRegion = cropped[index]
+          , newMat = new cv.Mat(
             aRegion.rows,
             aRegion.cols,
             aRegion.type
@@ -61,7 +57,7 @@ const {
 
         if (accuracyFactor * restAccuracySummed > accuracy) {
 
-          throw new Error(`There are ${thisPrections.length} on ${anImage}: ${JSON.stringify(thisPrections)}`);
+          throw new Error(`There are ${thisPrections.length} on ${anImage} - sector ${index}: ${JSON.stringify(thisPrections)}`);
         }
 
         predictions.push(predictedValue);
@@ -74,49 +70,59 @@ const {
   , disposeFile = async aFile => {
       const {base} = parse(aFile);
 
-      await rename(aFile, `${DISPOSE_FOLDER}/${base}`);
+      await rename(aFile, `${disposeFolder}/${base}`);
     };
 
-(async() => {
-  const model = await tf.node.loadSavedModel(MODEL_FOLDER)
-    , files = (await readdir(ROOT_FOLDER)).map(elm => `${ROOT_FOLDER}/${elm}`)
+(async function entryPoint() {
+  await mkdir(disposeFolder, {
+    'recursive': true
+  });
+
+  const model = await tf.node.loadSavedModel(modelFolder)
+    , files = (await readdir(sourceImagesFolder)).map(elm => `${sourceImagesFolder}/${elm}`)
     , predict = predictFactory(model);
 
-  for (let index = 0; index < files.length; index += 1) {
-    const aFile = files[index]
-      , howManyFilesByFar = index + 1
-      , timestamp = aFile.split(timeStampMatcher)
-        .find(elm => Boolean(elm))
+  let howManyFilesByFar = 1;
+
+  for (const aFile of files) {
+    const timestamp = aFile.split(timeStampMatcher)
+          .find(elm => Boolean(elm))
       , thatTime = new Date(timestamp);
 
-    if (howManyFilesByFar < howManyFiles) {
-      if (thatTime >= fromDate) {
+    if (fromDate <= thatTime) {
+      if (howManyFilesByFar <= howManyFiles) {
 
         try {
           const aPrediction = await predict(aFile);
 
-          await appendFile(LOG_FILE, `${timestamp},${aPrediction}${EOL}`);
-
-          pino.info({
+          log.info({
+            howManyFilesByFar,
             thatTime,
             'prediction': aPrediction
           });
 
-          pino.info(`${aFile} disposing`);
+          await writeWaterMeterCounterData({
+            'timestamp': thatTime,
+            'counter': aPrediction
+          });
           await disposeFile(aFile);
-          pino.info(`${aFile} disposed`);
+          log.debug(`${howManyFilesByFar} - ${aFile} disposed`);
         } catch (err) {
 
-          pino.warn(err, thatTime);
+          log.warn({err, thatTime, aFile});
         }
+
+        howManyFilesByFar += 1;
       } else {
 
-        pino.info({thatTime, 'referenceDate': fromDate});
+        log.info({howManyFilesByFar, howManyFiles}, 'batch number reached');
+        break;
       }
     } else {
 
-      pino.info({howManyFilesByFar, howManyFiles}, 'batch number reached');
-      break;
+      log.debug(`${thatTime} skipped`);
     }
   }
-})();
+
+  await close();
+}());
