@@ -29,7 +29,6 @@ const {readdir, mkdir, rename} = require('fs/promises')
 
       for (const aRegion of cropped) {
 
-        //cv.imwrite(`${tmpFolder}/${index}-${timestamp}.png`, aRegion.cvtColor(cv.COLOR_GRAY2BGR));
         cv.imwrite(`${toModelFolder}/${index}/${timestamp}-${index}.png`, aRegion);
         index += 1;
       }

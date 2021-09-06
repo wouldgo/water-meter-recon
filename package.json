@@ -4,7 +4,8 @@
   "scripts": {
     "prepare-images": "node prepare-images.js",
     "predict": "env $(cat ${ENV:-/dev/null} | xargs) node predict.js",
-    "debug-predict": "env $(cat ${ENV:-/dev/null} | xargs) node --inspect-brk predict.js",
+    "debug:predict": "env $(cat ${ENV:-/dev/null} | xargs) node --inspect-brk predict.js",
+    "debug:prepare-images": "node --inspect-brk prepare-images.js",
     "train": "./py/train.sh",
     "lint": "eslint ."
   },

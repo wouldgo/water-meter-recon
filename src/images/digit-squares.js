@@ -1,20 +1,23 @@
 'use strict';
 
+const multipliers = [0.1, 0.1];
+
 module.exports = cv => {
-  const multipliers = [0.1, 1.5]
-    , mergeIntersectingRects = rects => {
-      return rects.reduce((prev, curr) => {
+  const mergeIntersectingRects = rects => {
+      const toReturn = [];
+
+      for (const aRect of rects) {
         const clearance = [
-            (curr.width * multipliers[0]),
-            (curr.height * multipliers[1])
+            (aRect.width * multipliers[0]),
+            (aRect.height * multipliers[1])
           ]
-          , currTouched = new cv.Rect(
-            (curr.x - clearance[0] / 2),
-            (curr.y - clearance[1] / 2),
-            curr.width + clearance[0],
-            curr.height + clearance[1]
+        , currTouched = new cv.Rect(
+            (aRect.x - clearance[0] / 2),
+            (aRect.y - clearance[1] / 2),
+            aRect.width + clearance[0],
+            aRect.height + clearance[1]
           )
-          , index = prev.findIndex(elm => {
+        , index = toReturn.findIndex(elm => {
             const intersection = elm.and(currTouched);
 
             return intersection.width > 0 || intersection.height > 0;
@@ -22,17 +25,18 @@ module.exports = cv => {
 
         if (index < 0) {
 
-          return [...prev, curr];
+          toReturn.push(aRect);
+        } else {
+          const newRect = toReturn[index].or(aRect);
+
+          toReturn.splice(index, 1, newRect);
         }
+      }
 
-        const newRect = prev[index].or(curr);
-
-        prev.splice(index, 1, newRect);
-        return prev;
-      }, []);
+      return toReturn;
     };
 
-  return filteredRects/*, mat)*/ => {
+  return filteredRects => {
     let thisRects = mergeIntersectingRects(filteredRects)
       , nextRects = mergeIntersectingRects(thisRects);
 
@@ -42,7 +46,7 @@ module.exports = cv => {
     }
 
     const results = thisRects
-      .filter(elm => elm.width > 21 && elm.height > 83)
+      .filter(elm => elm.height / elm.width > 1 && elm.width > 25)
       .sort((first, second) => {
         const firstSquare = first.toSquare()
           , secondSquare = second.toSquare();
@@ -59,20 +63,6 @@ module.exports = cv => {
 
         return 0;
       });
-
-    /*results.forEach(aRect => {
-      const point0 = new cv.Point2(
-          aRect.x,
-          aRect.y
-        )
-        , point1 = new cv.Point2(
-          aRect.x + aRect.width,
-          aRect.y + aRect.height
-        );
-
-      //toUse.drawCircle(point0, 2, white, 2);
-      mat.drawRectangle(point0, point1, new cv.Vec(0, 0, 0));
-    });*/
 
     return results.slice(0, 5);
   };

@@ -21,7 +21,7 @@ module.exports = cv => {
       return [toUse, originalMatCutMat];
     };
 
-  return filename/*, destFolder)*/ => {
+  return (filename, timestamp) => {
     const originalMat = cv.imread(filename)
       , mat = originalMat
         .cvtColor(cv.COLOR_BGR2GRAY)
@@ -32,27 +32,26 @@ module.exports = cv => {
           cv.CHAIN_APPROX_NONE)
       , filtered = contours
         .map(aContour => aContour.boundingRect())
-        .filter(elm => elm.width > 5 && elm.height > 5)
       , digitsRegions = digitsSquares(filtered, toUse);
 
-    /*filtered.forEach(aRect => {
-      const point0 = new cv.Point2(
-        aRect.x,
-        aRect.y
-      )
-      , point1 = new cv.Point2(
-        aRect.x + aRect.width,
-        aRect.y + aRect.height
-      );
+    if (timestamp != null) {
+      for (const aRect of digitsRegions) {
 
-      //toUse.drawCircle(point0, 2, white, 2);
-      toUse.drawRectangle(point0, point1, new cv.Vec(255, 255, 255));
-    });*/
+        const point0 = new cv.Point2(
+          aRect.x,
+          aRect.y
+        )
+        , point1 = new cv.Point2(
+          aRect.x + aRect.width,
+          aRect.y + aRect.height
+        );
 
-    //cv.imwrite(`${destFolder}/_01-mat.png`, mat);
-    //cv.imwrite(`${destFolder}/_02-to-use.png`, toUse);
-    //cv.imwrite(`${destFolder}/_03-to-return.png`, toReturn);
+        toUse.drawCircle(point0, 2, new cv.Vec(127, 127, 127), 2);
+        toUse.drawRectangle(point0, point1, new cv.Vec(127, 127, 127));
+      }
 
+      cv.imwrite(`/home/dario/tmp/${timestamp}-02-to-use.png`, toUse);
+    }
 
     return crop(toReturn, digitsRegions);
 

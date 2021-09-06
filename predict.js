@@ -28,8 +28,8 @@ const {readdir, mkdir, rename} = require('fs/promises')
   , modelModule = require('./src/model')
   , {close, writeWaterMeterCounterData} = modelModule({log, influxDb, modelFolder})
   , timeStampMatcher = /.+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z).+/g
-  , predictFactory = model => async anImage => {
-      const cropped = image(anImage)
+  , predictFactory = model => async(anImage, timestamp) => {
+      const cropped = image(anImage, timestamp)
         , predictions = [];
 
       for (let index = 0; index < cropped.length; index += 1) {
@@ -82,7 +82,9 @@ const {readdir, mkdir, rename} = require('fs/promises')
     , files = (await readdir(sourceImagesFolder)).map(elm => `${sourceImagesFolder}/${elm}`)
     , predict = predictFactory(model);
 
-  let howManyFilesByFar = 1;
+  let howManyFilesByFar = 1
+    , inError = 0;
+  const toDispose = [];
 
   for (const aFile of files) {
     const timestamp = aFile.split(timeStampMatcher)
@@ -105,11 +107,12 @@ const {readdir, mkdir, rename} = require('fs/promises')
             'timestamp': thatTime,
             'counter': aPrediction
           });
-          await disposeFile(aFile);
-          log.debug(`${howManyFilesByFar} - ${aFile} disposed`);
+
+          toDispose.push(aFile);
         } catch (err) {
 
           log.warn({err, thatTime, aFile});
+          inError += 1;
         }
 
         howManyFilesByFar += 1;
@@ -125,4 +128,14 @@ const {readdir, mkdir, rename} = require('fs/promises')
   }
 
   await close();
+  for (const aFile of toDispose) {
+
+    await disposeFile(aFile);
+    log.info(`${aFile} disposed`);
+  }
+
+  log.info({
+    'ko': inError,
+    'ok': toDispose.length
+  });
 }());
