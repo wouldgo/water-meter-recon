@@ -7,7 +7,9 @@
     "debug:predict": "env $(cat ${ENV:-/dev/null} | xargs) node --inspect-brk predict.js",
     "debug:prepare-images": "node --inspect-brk prepare-images.js",
     "train": "./py/train.sh",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "version": "git add -A .",
+    "postversion": "git push --all; git push --tags"
   },
   "pre-commit": [
     "lint"
