@@ -8,22 +8,12 @@ RUN apk add --no-cache \
   cmake \
   g++
 WORKDIR /home/logic
-COPY . .
-RUN find . -maxdepth 1 ! \
-  \( \
-    -name "model" -o \
-    -name "_conf.js" -o \
-    -name "src" -o \
-    -name "_conf.js" -o \
-    -name "package.json" -o \
-    -name "package-lock.json" -o \
-    -name "predict.js" -o \
-    -name "prepare-images.js" \
-  \) \
-  -exec rm -Rf {} + || true
+COPY model model
+COPY src src
+COPY _conf.js package-lock.json package.json predict.js ./
 RUN npm ci
 
 FROM node:14.17.3-alpine3.12 AS runner
 WORKDIR /home
 COPY --from=builder /home/logic .
-ENTRYPOINT [ "node" ]
+CMD [ "node", "predict.js" ]
