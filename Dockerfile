@@ -1,19 +1,21 @@
-FROM node:14.17.3-alpine3.12 AS builder
+FROM node:14.17.3-buster-slim AS builder
 RUN npm install -g npm@latest-6
-RUN apk add --no-cache \
-  linux-headers \
-  git \
-  python3 \
-  make \
-  cmake \
-  g++
+RUN apt-get update && \
+    apt-get install -y build-essential \
+    wget \
+    git \
+    python3 \
+    make \
+    gcc \
+    libc6-dev \
+    cmake
 WORKDIR /home/logic
 COPY model model
 COPY src src
 COPY _conf.js package-lock.json package.json predict.js ./
 RUN npm ci
 
-FROM node:14.17.3-alpine3.12 AS runner
+FROM node:14.17.3-buster-slim AS runner
 WORKDIR /home
 COPY --from=builder /home/logic .
 CMD [ "node", "predict.js" ]
