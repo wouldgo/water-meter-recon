@@ -13,9 +13,7 @@ WORKDIR /home/logic
 COPY model model
 COPY src src
 COPY _conf.js package-lock.json package.json predict.js ./
+
 RUN npm ci
 
-FROM node:14.17.3-buster-slim AS runner
-WORKDIR /home
-COPY --from=builder /home/logic .
 CMD [ "node", "predict.js" ]
