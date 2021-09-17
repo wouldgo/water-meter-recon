@@ -1,6 +1,6 @@
 {
   "name": "meter-recon",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "scripts": {
     "prepare-images": "node prepare-images.js",
     "predict": "env $(cat ${ENV:-/dev/null} | xargs) node predict.js",
