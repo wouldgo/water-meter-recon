@@ -8,3 +8,5 @@ py/.venv/
 /.blackbox/pubring.kbx~
 /.blackbox/secring.gpg
 /LOCAL_ENV.env
+dist/*
+!dist/.keep

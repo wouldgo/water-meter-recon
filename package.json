@@ -8,8 +8,11 @@
     "debug:prepare-images": "node --inspect-brk prepare-images.js",
     "train": "./py/train.sh",
     "lint": "eslint .",
-    "version": "git add -A .",
-    "postversion": "git push --all; git push --tags"
+    "build:x64": "pkg --target node14-linux-x64 --output dist/x64-predict predict.js",
+    "build": "npm run build:x64",
+    "version": "npm run build && git add -A .",
+    "postversion": "git push --all; git push --tags",
+    "bin": "env $(cat ${ENV:-/dev/null} | xargs) ./dist/x64-predict"
   },
   "pre-commit": [
     "lint"
@@ -27,8 +30,8 @@
   "dependencies": {
     "@influxdata/influxdb-client": "1.15.0",
     "@tensorflow/tfjs-node": "3.8.0",
-    "opencv4nodejs": "wouldgo/opencv4nodejs#gcc-indentation",
     "make-promises-safe": "5.1.0",
+    "opencv4nodejs": "wouldgo/opencv4nodejs#gcc-indentation",
     "pino": "6.13.0"
   },
   "devDependencies": {
@@ -37,6 +40,7 @@
     "eslint-plugin-node": "11.1.0",
     "eslint-plugin-promise": "5.1.0",
     "pre-commit": "1.2.2",
-    "prettier": "2.3.1"
+    "prettier": "2.3.1",
+    "pkg": "5.3.2"
   }
 }
